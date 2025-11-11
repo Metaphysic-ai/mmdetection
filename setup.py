@@ -8,15 +8,21 @@ import sys
 import warnings
 from setuptools import find_packages, setup
 
-import torch
-from torch.utils.cpp_extension import (BuildExtension, CppExtension,
-                                       CUDAExtension)
+# --- 🔧 Safe torch import for isolated builds ---
+try:
+    import torch
+    from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
+except ImportError:
+    torch = None
+    BuildExtension = None
+    CppExtension = None
+    CUDAExtension = None
+# ------------------------------------------------
 
 
 def readme():
     with open('README.md', encoding='utf-8') as f:
-        content = f.read()
-    return content
+        return f.read()
 
 
 version_file = 'mmdet/version.py'
@@ -29,9 +35,12 @@ def get_version():
 
 
 def make_cuda_ext(name, module, sources, sources_cuda=[]):
-
     define_macros = []
     extra_compile_args = {'cxx': []}
+
+    if torch is None:
+        print(f"⚠️ Torch not available during build; skipping CUDA extensions for {name}")
+        return None
 
     if torch.cuda.is_available() or os.getenv('FORCE_CUDA', '0') == '1':
         define_macros += [('WITH_CUDA', None)]
@@ -187,6 +196,11 @@ def add_mim_extension():
 
 if __name__ == '__main__':
     add_mim_extension()
+    ext_modules = []
+    if BuildExtension is not None:
+        # only register extensions if torch is available
+        ext_modules = []  # you can later add real extensions here
+
     setup(
         name='mmdet',
         version=get_version(),
@@ -219,6 +233,7 @@ if __name__ == '__main__':
             'tracking': parse_requirements('requirements/tracking.txt'),
             'multimodal': parse_requirements('requirements/multimodal.txt'),
         },
-        ext_modules=[],
-        cmdclass={'build_ext': BuildExtension},
-        zip_safe=False)
+        ext_modules=ext_modules,
+        cmdclass={'build_ext': BuildExtension} if BuildExtension else {},
+        zip_safe=False,
+    )
