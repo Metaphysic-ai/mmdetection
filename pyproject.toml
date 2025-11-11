@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mmdet"
+version = "2.0.0"
+description = "Metaphysic AI fork of mmdetection"
+readme = "README.md"
+requires-python = ">=3.8"
